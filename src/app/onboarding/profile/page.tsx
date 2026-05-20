@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,10 +38,24 @@ export default function OnboardingProfilePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productLines: [] },
   });
+
+  useEffect(() => {
+    api.get('/agents/me').then((res) => {
+      const p = res.data?.profile;
+      if (p) {
+        reset({
+          irdaLicenseNumber: p.irdaLicenseNumber ?? '',
+          agencyName: p.agencyName ?? '',
+          experienceYears: p.experienceYears != null ? String(p.experienceYears) : '',
+          productLines: p.productLines ?? [],
+        });
+      }
+    }).catch(() => {});
+  }, [reset]);
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -146,7 +160,7 @@ export default function OnboardingProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    IRDA License Number <span className="text-slate-400 font-normal">(optional)</span>
+                    IRDA License Number
                   </label>
                   <input {...register('irdaLicenseNumber')} placeholder="IND-2021-1234567" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all" />
                 </div>
@@ -162,7 +176,12 @@ export default function OnboardingProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Years of Experience <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <input {...register('experienceYears')} type="number" min={0} max={60} placeholder="5" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all" />
+                  <select {...register('experienceYears')} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-700 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all">
+                    <option value="">Select years</option>
+                    {Array.from({ length: 51 }, (_, i) => (
+                      <option key={i} value={i}>{i === 0 ? 'Less than 1 year' : `${i} year${i > 1 ? 's' : ''}`}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -205,7 +224,13 @@ export default function OnboardingProfilePage() {
 
               {/* Submit */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <p className="text-xs text-slate-400">All fields marked * are required</p>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-semibold px-4 py-3 rounded-xl text-sm transition-all hover:-translate-x-0.5"
+                >
+                  <span>←</span> Back
+                </button>
                 <button
                   type="submit"
                   disabled={loading}

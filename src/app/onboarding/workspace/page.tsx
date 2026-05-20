@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,15 +10,8 @@ import { AxiosError } from 'axios';
 import { Heart, Car, Zap, ShieldCheck, Plane, User, Users, Check, CheckCircle2, AlertCircle, Rocket, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const INDIA_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-  'Andaman & Nicobar Islands', 'Chandigarh', 'Dadra & Nagar Haveli and Daman & Diu',
-  'Delhi', 'Jammu & Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
-];
+const INDIA_STATES: string[] = [];
+const CITIES_BY_STATE: Record<string, string[]> = {};
 
 const PRODUCT_INTERESTS = [
   { label: 'Health',      Icon: Heart },
@@ -48,18 +41,63 @@ export default function OnboardingWorkspacePage() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [states, setStates] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productInterests: [], teamType: 'solo' },
   });
+
+  const selectedState = watch('state');
+
+  // Fetch all Indian states on mount
+  useEffect(() => {
+    fetch('https://countriesnow.space/api/v0.1/countries/states', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country: 'India' }),
+    })
+      .then((r) => r.json())
+      .then((d) => setStates(d?.data?.states?.map((s: { name: string }) => s.name).sort() ?? []))
+      .catch(() => {});
+  }, []);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (!selectedState) { setCities([]); return; }
+    setCitiesLoading(true);
+    fetch('https://countriesnow.space/api/v0.1/countries/state/cities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country: 'India', state: selectedState }),
+    })
+      .then((r) => r.json())
+      .then((d) => { setCities(d?.data?.sort() ?? []); setCitiesLoading(false); })
+      .catch(() => setCitiesLoading(false));
+  }, [selectedState]);
+
+  useEffect(() => {
+    api.get('/agents/me').then((res) => {
+      const p = res.data?.profile;
+      const w = res.data?.workspace;
+      reset({
+        businessName: w?.businessName ?? p?.agencyName ?? '',
+        city: w?.city ?? '',
+        state: w?.state ?? '',
+        productInterests: w?.productInterests ?? p?.productLines ?? [],
+        teamType: w?.teamType ?? 'solo',
+      });
+    }).catch(() => {});
+  }, [reset]);
 
   async function onSubmit(data: FormData) {
     setLoading(true);
     setError('');
     try {
       await api.post('/agents/workspace', data);
-      toast.success('Workspace created! Welcome aboard 🎉');
+      toast.success('Workspace saved! Welcome aboard 🎉');
       router.push('/onboarding/complete');
     } catch (err) {
       const e = err as AxiosError<{ message: string | string[] }>;
@@ -154,25 +192,37 @@ export default function OnboardingWorkspacePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">City <span className="text-red-500">*</span></label>
-                  <input {...register('city')} placeholder="Mumbai" className={`w-full bg-white border rounded-xl px-4 py-3 text-sm placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.city ? 'border-red-400' : 'border-slate-300'}`} />
-                  {errors.city && <p className="text-red-500 text-xs mt-1.5">{errors.city.message}</p>}
-                </div>
-                <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">State <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <select
-                      {...register('state')}
+                      {...register('state', { onChange: () => { setValue('city', ''); } })}
                       className={`w-full bg-white border rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all appearance-none pr-10 ${errors.state ? 'border-red-400 text-slate-900' : 'border-slate-300 text-slate-900'}`}
                     >
-                      <option value="" className="text-slate-400">Select state...</option>
-                      {INDIA_STATES.map((s) => (
+                      <option value="">Select state...</option>
+                      {states.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                   {errors.state && <p className="text-red-500 text-xs mt-1.5">{errors.state.message}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">City <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <select
+                      {...register('city')}
+                      disabled={!selectedState || citiesLoading}
+                      className={`w-full bg-white border rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all appearance-none pr-10 disabled:bg-slate-50 disabled:text-slate-400 ${errors.city ? 'border-red-400 text-slate-900' : 'border-slate-300 text-slate-900'}`}
+                    >
+                      <option value="">{citiesLoading ? 'Loading...' : selectedState ? 'Select city...' : 'Select state first'}</option>
+                      {cities.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                  {errors.city && <p className="text-red-500 text-xs mt-1.5">{errors.city.message}</p>}
                 </div>
               </div>
 
@@ -242,7 +292,13 @@ export default function OnboardingWorkspacePage() {
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <p className="text-xs text-slate-400">Fields marked * are required</p>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-semibold px-4 py-3 rounded-xl text-sm transition-all hover:-translate-x-0.5"
+                >
+                  <span>←</span> Back
+                </button>
                 <button
                   type="submit"
                   disabled={loading}

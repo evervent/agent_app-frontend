@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,9 +18,9 @@ const STEPS = [
 
 const schema = z.object({
   panNumber: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format (e.g. ABCDE1234F)').optional().or(z.literal('')),
-  bankAccountNumber: z.string().max(30).optional().or(z.literal('')),
+  bankAccountNumber: z.string().regex(/^[0-9]{9,18}$/, 'Invalid account number (9-18 digits)').optional().or(z.literal('')),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC format (e.g. SBIN0001234)').optional().or(z.literal('')),
-  gstNumber: z.string().max(20).optional().or(z.literal('')),
+  gstNumber: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST format (e.g. 22AAAAA0000A1Z5)').optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -31,7 +31,21 @@ export default function OnboardingBusinessPage() {
   const [loading, setLoading] = useState(false);
   const [skipping, setSkipping] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  useEffect(() => {
+    api.get('/agents/me').then((res) => {
+      const p = res.data?.profile;
+      if (p) {
+        reset({
+          panNumber: p.panNumber ?? '',
+          bankAccountNumber: p.bankAccountNumber ?? '',
+          ifscCode: p.ifscCode ?? '',
+          gstNumber: p.gstNumber ?? '',
+        });
+      }
+    }).catch(() => {});
+  }, [reset]);
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -140,27 +154,36 @@ export default function OnboardingBusinessPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">PAN Number <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <input {...register('panNumber')} placeholder="ABCDE1234F" className={`w-full bg-white border rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.panNumber ? 'border-red-400' : 'border-slate-300'}`} />
+                  <input {...register('panNumber')} placeholder="ABCDE1234F" maxLength={10} className={`w-full bg-white border rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.panNumber ? 'border-red-400' : 'border-slate-300'}`} />
                   {errors.panNumber && <p className="text-red-500 text-xs mt-1.5">{errors.panNumber.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Bank Account Number <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <input {...register('bankAccountNumber')} placeholder="123456789012" inputMode="numeric" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all" />
+                  <input {...register('bankAccountNumber')} placeholder="123456789012" inputMode="numeric" maxLength={18} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all" />
+                  {errors.bankAccountNumber && <p className="text-red-500 text-xs mt-1.5">{errors.bankAccountNumber.message}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">IFSC Code <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <input {...register('ifscCode')} placeholder="SBIN0001234" className={`w-full bg-white border rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.ifscCode ? 'border-red-400' : 'border-slate-300'}`} />
+                  <input {...register('ifscCode')} placeholder="SBIN0001234" maxLength={11} className={`w-full bg-white border rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.ifscCode ? 'border-red-400' : 'border-slate-300'}`} />
                   {errors.ifscCode && <p className="text-red-500 text-xs mt-1.5">{errors.ifscCode.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">GST Number <span className="text-slate-400 font-normal">(optional)</span></label>
-                  <input {...register('gstNumber')} placeholder="22AAAAA0000A1Z5" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all" />
+                  <input {...register('gstNumber')} placeholder="22AAAAA0000A1Z5" maxLength={15} className={`w-full bg-white border rounded-xl px-4 py-3 text-sm uppercase placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all ${errors.gstNumber ? 'border-red-400' : 'border-slate-300'}`} />
+                  {errors.gstNumber && <p className="text-red-500 text-xs mt-1.5">{errors.gstNumber.message}</p>}
                 </div>
               </div>
 
               <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-semibold px-4 py-3 rounded-xl text-sm transition-all hover:-translate-x-0.5"
+                >
+                  <span>←</span> Back
+                </button>
                 <button
                   type="button"
                   onClick={handleSkip}
