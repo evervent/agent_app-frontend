@@ -122,13 +122,7 @@ export default function ProfilePage() {
         />
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard')}
-            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
-          >
-            ← Back to Dashboard
-          </button>
+          <p className="text-xs text-slate-400">All fields marked * are required</p>
           <button
             type="submit"
             disabled={loading}

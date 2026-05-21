@@ -149,7 +149,13 @@ export default function WorkspacePage() {
         />
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-          <p className="text-xs text-slate-400">Fields marked * are required</p>
+          <button
+            type="button"
+            onClick={() => router.push('/onboarding/business')}
+            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
+          >
+            ← Back
+          </button>
           <button
             type="submit"
             disabled={loading}
