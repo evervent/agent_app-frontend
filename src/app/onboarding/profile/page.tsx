@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -253,3 +254,6 @@ export default function OnboardingProfilePage() {
     </div>
   );
 }
+=======
+export { default } from '@/features/onboarding/components/ProfilePage';
+>>>>>>> development

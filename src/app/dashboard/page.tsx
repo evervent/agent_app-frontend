@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 
 import { useAuthStore } from '@/store/authStore';
@@ -520,3 +521,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+=======
+export { default } from '@/features/dashboard/components/DashboardPage';
+>>>>>>> development

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -210,3 +211,6 @@ export default function OnboardingBusinessPage() {
   );
 }
 
+=======
+export { default } from '@/features/onboarding/components/BusinessPage';
+>>>>>>> development
