@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,7 +26,21 @@ export default function BusinessPage() {
   const [loading, setLoading] = useState(false);
   const [skipping, setSkipping] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Pre-fill from saved profile
+  useEffect(() => {
+    agentService.getMe().then((res) => {
+      const p = res.data?.profile;
+      if (!p) return;
+      reset({
+        panNumber: p.panNumber ?? '',
+        bankAccountNumber: p.bankAccountNumber ?? '',
+        ifscCode: p.ifscCode ?? '',
+        gstNumber: p.gstNumber ?? '',
+      });
+    }).catch(() => { /* silent */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -99,6 +113,13 @@ export default function BusinessPage() {
         </div>
 
         <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => router.push('/onboarding/profile')}
+            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors mr-auto"
+          >
+            ← Back
+          </button>
           <button
             type="button"
             onClick={handleSkip}

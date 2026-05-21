@@ -9,6 +9,8 @@ import { AxiosError } from 'axios';
 import { Rocket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { agentService } from '@/features/agent/services/agent.service';
+import { useAuthStore } from '@/shared/store/authStore';
+import { api } from '@/shared/lib/api';
 import OnboardingShell from '@/features/onboarding/components/OnboardingShell';
 import FormInput from '@/shared/components/ui/FormInput';
 import SearchSelect from '@/shared/components/ui/SearchSelect';
@@ -45,6 +47,18 @@ export default function WorkspacePage() {
     setError('');
     try {
       await agentService.setupWorkspace(data);
+
+      // Refresh JWT so new token carries workspaceId
+      const { refreshToken, setAuth } = useAuthStore.getState();
+      if (refreshToken) {
+        try {
+          const { data: tokens } = await api.post('/auth/refresh', { refreshToken });
+          setAuth({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+        } catch {
+          // Non-fatal — user can still proceed, token refreshes on next 401
+        }
+      }
+
       toast.success('Workspace created! Welcome aboard 🎉');
       router.push('/onboarding/complete');
     } catch (err) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,10 +32,24 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productLines: [] },
   });
+
+  // Pre-fill from saved profile
+  useEffect(() => {
+    agentService.getMe().then((res) => {
+      const p = res.data?.profile;
+      if (!p) return;
+      reset({
+        irdaLicenseNumber: p.irdaLicenseNumber ?? '',
+        agencyName: p.agencyName ?? '',
+        experienceYears: p.experienceYears != null ? String(p.experienceYears) : '',
+        productLines: p.productLines ?? [],
+      });
+    }).catch(() => { /* silent */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -108,7 +122,13 @@ export default function ProfilePage() {
         />
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-          <p className="text-xs text-slate-400">All fields marked * are required</p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
+          >
+            ← Back to Dashboard
+          </button>
           <button
             type="submit"
             disabled={loading}
