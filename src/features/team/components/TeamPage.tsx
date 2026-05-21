@@ -1,25 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Button,
-  TextField,
-  CircularProgress,
-  Alert,
-  Skeleton,
-} from '@mui/material';
+import { Button, TextInputField } from 'ev-ui-lab';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTeamMembers } from '../hooks/useTeamMembers';
 import InviteDialog from './InviteDialog';
 import MemberCard from './MemberCard';
+import MemberDrawer from './MemberDrawer';
+import { TeamMember } from '../types/team.types';
 
 export default function TeamPage() {
   const { members, roles, loading, error, inviteMember, updateMember, removeMember, refetch } =
     useTeamMembers();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [drawerMemberId, setDrawerMemberId] = useState<string | null>(null);
+  const drawerMember: TeamMember | null = members.find((m) => m.id === drawerMemberId) ?? null;
 
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
@@ -58,6 +56,7 @@ export default function TeamPage() {
   async function handleRemove(memberId: string) {
     try {
       await removeMember(memberId);
+      if (drawerMemberId === memberId) setDrawerMemberId(null);
       toast.success('Member removed');
     } catch {
       toast.error('Failed to remove member');
@@ -85,26 +84,35 @@ export default function TeamPage() {
           </p>
         </div>
         <Button
-          variant="contained"
-          startIcon={<UserPlus size={16} />}
+          text="Invite Member"
+          className="primaryBtn"
+          size="medium"
           onClick={() => setInviteOpen(true)}
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 600,
-            background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
-            boxShadow: '0 4px 12px rgba(37,99,235,0.28)',
-            px: 2.5,
-            py: 1,
-            '&:hover': {
-              background: 'linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%)',
-              boxShadow: '0 6px 16px rgba(37,99,235,0.35)',
-            },
-          }}
-        >
-          Invite Member
-        </Button>
+          startIcon={<UserPlus size={16} />}
+        />
       </motion.div>
+
+      {/* Status summary cards */}
+      {!loading && members.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.3 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+        >
+          {[
+            { label: 'Total Members', value: members.length, color: 'text-slate-700', bg: 'bg-slate-50 border-slate-200' },
+            { label: 'Active', value: members.filter((m) => m.isActive).length, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: 'Inactive', value: members.filter((m) => !m.isActive).length, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+            { label: 'Roles', value: [...new Set(members.map((m) => m.roleId))].length, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`border rounded-xl px-4 py-3 ${bg}`}>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+            </div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Search */}
       {!loading && members.length > 0 && (
@@ -113,43 +121,31 @@ export default function TeamPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
         >
-          <TextField
-            placeholder="Search by name, mobile or role…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-            sx={{
-              maxWidth: 400,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: 'white',
-              },
-            }}
-          />
+          <div className="max-w-sm">
+            <TextInputField
+              title=""
+              placeholder="Search by name, mobile or role…"
+              value={search}
+              attrName="search"
+              value_update={(_attr, val) => setSearch(val)}
+            />
+          </div>
         </motion.div>
       )}
 
       {/* Error state */}
       {error && (
-        <Alert
-          severity="error"
-          sx={{ borderRadius: 2 }}
-          action={
-            <Button size="small" onClick={refetch} sx={{ textTransform: 'none' }}>
-              Retry
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-red-600">{error}</p>
+          <Button text="Retry" className="textBtn" size="small" onClick={refetch} />
+        </div>
       )}
 
       {/* Loading skeletons */}
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} variant="rounded" height={76} sx={{ borderRadius: 3 }} />
+            <div key={i} className="h-[76px] bg-slate-100 animate-pulse rounded-2xl" />
           ))}
         </div>
       )}
@@ -173,6 +169,7 @@ export default function TeamPage() {
                     onUpdateRole={handleUpdateRole}
                     onToggleActive={handleToggleActive}
                     onRemove={handleRemove}
+                    onClick={() => setDrawerMemberId(member.id)}
                   />
                 ))}
               </AnimatePresence>
@@ -197,21 +194,15 @@ export default function TeamPage() {
                   : 'Invite agents to collaborate in your workspace'}
               </p>
               {!search && (
-                <Button
-                  variant="outlined"
-                  startIcon={<UserPlus size={15} />}
-                  onClick={() => setInviteOpen(true)}
-                  sx={{
-                    mt: 3,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderColor: '#2563eb',
-                    color: '#2563eb',
-                  }}
-                >
-                  Invite your first member
-                </Button>
+                <div className="mt-3">
+                  <Button
+                    text="Invite your first member"
+                    className="outlinedBtn"
+                    size="medium"
+                    onClick={() => setInviteOpen(true)}
+                    startIcon={<UserPlus size={15} />}
+                  />
+                </div>
               )}
             </motion.div>
           )}
@@ -224,6 +215,17 @@ export default function TeamPage() {
         roles={roles}
         onClose={() => setInviteOpen(false)}
         onInvite={handleInvite}
+      />
+
+      {/* Member Detail Drawer */}
+      <MemberDrawer
+        member={drawerMember}
+        roles={roles}
+        open={!!drawerMemberId}
+        onClose={() => setDrawerMemberId(null)}
+        onUpdateRole={handleUpdateRole}
+        onToggleActive={handleToggleActive}
+        onRemove={handleRemove}
       />
     </div>
   );

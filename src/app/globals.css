@@ -10,6 +10,7 @@
   --primary-light: #eff6ff;
   --muted: #64748b;
   --radius: 12px;
+  --borderRadius: 8px;
 }
 
 @theme inline {

@@ -1,16 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/shared/lib/api';
 import { AxiosError } from 'axios';
-import { CheckCircle2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { TextInputField, Button } from 'ev-ui-lab';
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name is required').max(150),
@@ -32,22 +31,35 @@ export default function SignupPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const [form, setForm] = useState({ fullName: '', mobile: '', email: '', password: '' });
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
 
-  async function onSubmit(data: FormData) {
+  function update(attr: string, val: string) {
+    setForm((prev) => ({ ...prev, [attr]: val }));
+    setFormErrors((prev) => ({ ...prev, [attr]: undefined }));
+  }
+
+  async function handleSubmit() {
+    const result = schema.safeParse(form);
+    if (!result.success) {
+      const errs: Partial<Record<keyof typeof form, string>> = {};
+      result.error.issues.forEach((e) => { const key = e.path[0]; if (key && typeof key === 'string') errs[key as keyof typeof form] = e.message; });
+      setFormErrors(errs);
+      return;
+    }
+    setFormErrors({});
     setLoading(true);
     setServerError('');
     try {
       await api.post('/auth/signup', {
-        fullName: data.fullName,
-        mobile: data.mobile,
-        email: data.email || undefined,
-        password: data.password,
+        fullName: form.fullName,
+        mobile: form.mobile,
+        email: form.email || undefined,
+        password: form.password,
       });
-      sessionStorage.setItem('signup_mobile', data.mobile);
-      toast.success('OTP sent to +91 ' + data.mobile);
+      sessionStorage.setItem('signup_mobile', form.mobile);
+      toast.success('OTP sent to +91 ' + form.mobile);
       router.push('/auth/signup/verify');
     } catch (err) {
       const error = err as AxiosError<{ message: string | string[] }>;
@@ -145,44 +157,64 @@ export default function SignupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
-              <input {...register('fullName')} placeholder="Ramesh Kumar" className={`w-full bg-white border rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-all focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.fullName ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'}`} />
-              {errors.fullName && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{errors.fullName.message}</p>}
-            </div>
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
+            <TextInputField
+              title="Full Name"
+              value={form.fullName}
+              attrName="fullName"
+              value_update={update}
+              validation_type="NAME"
+              required={true}
+              placeholder="Ramesh Kumar"
+              warn_status={!!formErrors.fullName}
+              error_message={formErrors.fullName}
+            />
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Number</label>
-              <div className="flex shadow-sm rounded-xl overflow-hidden border border-slate-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all">
-                <span className="flex items-center px-3.5 bg-slate-50 border-r border-slate-200 text-slate-600 text-sm font-medium shrink-0">+91</span>
-                <input {...register('mobile')} placeholder="9876543210" inputMode="numeric" maxLength={10} className="flex-1 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none" />
-              </div>
-              {errors.mobile && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{errors.mobile.message}</p>}
-            </div>
+            <TextInputField
+              title="Mobile Number"
+              value={form.mobile}
+              attrName="mobile"
+              value_update={update}
+              validation_type="MOBILE"
+              required={true}
+              placeholder="9876543210"
+              max_length={10}
+              warn_status={!!formErrors.mobile}
+              error_message={formErrors.mobile}
+            />
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email <span className="text-slate-400 font-normal">(optional)</span></label>
-              <input {...register('email')} type="email" placeholder="ramesh@example.com" className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-all focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-              {errors.email && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{errors.email.message}</p>}
-            </div>
+            <TextInputField
+              title="Email (optional)"
+              value={form.email}
+              attrName="email"
+              value_update={update}
+              placeholder="ramesh@example.com"
+              warn_status={!!formErrors.email}
+              error_message={formErrors.email}
+            />
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">MPIN <span className="text-slate-400 font-normal">(6-digit PIN)</span></label>
-              <div className={`flex bg-white border rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 ${errors.password ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'}`}>
-                <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="6-digit MPIN" inputMode="numeric" maxLength={6} className="flex-1 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none rounded-l-xl tracking-widest" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="px-3.5 text-slate-400 hover:text-slate-600 transition-colors">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{errors.password.message}</p>}
-            </div>
+            <TextInputField
+              title="MPIN (6-digit PIN)"
+              value={form.password}
+              attrName="password"
+              value_update={update}
+              validation_type="PASSWORD"
+              required={true}
+              placeholder="6-digit MPIN"
+              max_length={6}
+              warn_status={!!formErrors.password}
+              error_message={formErrors.password}
+            />
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3.5 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2">
-              {loading ? (
-                <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Creating account…</>
-              ) : 'Create Account'}
-            </button>
+            <Button
+              text={loading ? 'Creating account…' : 'Create Account'}
+              className="primaryBtn"
+              size="large"
+              onClick={handleSubmit}
+              fullWidth={true}
+              loader={loading}
+              disabled={loading}
+            />
 
             <p className="text-center text-xs text-slate-400 leading-relaxed">
               By creating an account, you agree to our{' '}

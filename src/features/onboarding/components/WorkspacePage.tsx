@@ -9,12 +9,15 @@ import { AxiosError } from 'axios';
 import { Rocket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { agentService } from '@/features/agent/services/agent.service';
+import { useAuthStore } from '@/shared/store/authStore';
+import { api } from '@/shared/lib/api';
 import OnboardingShell from '@/features/onboarding/components/OnboardingShell';
 import FormInput from '@/shared/components/ui/FormInput';
 import SearchSelect from '@/shared/components/ui/SearchSelect';
 import ProductChips from '@/features/onboarding/components/ProductChips';
 import TeamTypeSelector from '@/features/onboarding/components/TeamTypeSelector';
 import { useCountryData } from '@/features/onboarding/hooks/useCountryData';
+import { Button } from 'ev-ui-lab';
 
 const schema = z.object({
   businessName: z.string().min(1, 'Business name is required').max(200),
@@ -32,7 +35,7 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(false);
   const { states, cities, citiesLoading, loadCities } = useCountryData();
 
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
+  const { handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productInterests: [], teamType: 'solo' },
   });
@@ -45,6 +48,18 @@ export default function WorkspacePage() {
     setError('');
     try {
       await agentService.setupWorkspace(data);
+
+      // Refresh JWT so new token carries workspaceId
+      const { refreshToken, setAuth } = useAuthStore.getState();
+      if (refreshToken) {
+        try {
+          const { data: tokens } = await api.post('/auth/refresh', { refreshToken });
+          setAuth({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+        } catch {
+          // Non-fatal — user can still proceed, token refreshes on next 401
+        }
+      }
+
       toast.success('Workspace created! Welcome aboard 🎉');
       router.push('/onboarding/complete');
     } catch (err) {
@@ -67,12 +82,20 @@ export default function WorkspacePage() {
       error={error}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <FormInput
-          {...register('businessName')}
-          label="Business Name"
-          placeholder="Kumar Insurance Agency"
-          required
-          error={errors.businessName?.message}
+        <Controller
+          name="businessName"
+          control={control}
+          render={({ field }) => (
+            <FormInput
+              label="Business Name"
+              attrName="businessName"
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              placeholder="Kumar Insurance Agency"
+              required={true}
+              error={errors.businessName?.message}
+            />
+          )}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -135,22 +158,22 @@ export default function WorkspacePage() {
         />
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-          <p className="text-xs text-slate-400">Fields marked * are required</p>
           <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold px-8 py-3 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none"
+            type="button"
+            onClick={() => router.push('/onboarding/business')}
+            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Setting up…
-              </>
-            ) : <><Rocket className="w-4 h-4" />Launch My Workspace</>}
+            ← Back
           </button>
+          <Button
+            text={loading ? 'Setting up…' : 'Launch My Workspace'}
+            className="primaryBtn"
+            size="large"
+            onClick={handleSubmit(onSubmit)}
+            loader={loading}
+            disabled={loading}
+            startIcon={loading ? undefined : <Rocket className="w-4 h-4" />}
+          />
         </div>
       </form>
     </OnboardingShell>

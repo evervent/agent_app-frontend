@@ -4,12 +4,14 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TeamPage } from '@/features/team';
 import {
   LayoutDashboard, Users, FileText, Shield, RefreshCw, IndianRupee, Building2,
   Settings, Bell, Search, LogOut, ChevronRight, TrendingUp, Target,
-  FilePlus, Send, UserPlus, ArrowUpRight, Sparkles, Menu, X,
+  FilePlus, Send, UserPlus, ArrowUpRight, Sparkles, Menu, X, UserCircle,
 } from 'lucide-react';
+import { TeamPage } from '@/features/team';
+import AgentProfilePage from '@/features/agent/components/AgentProfilePage';
+import { useAgentProfile } from '@/features/agent/hooks/useAgentProfile';
 
 const NAV_ITEMS = [
   { id: 'home',     label: 'Dashboard', Icon: LayoutDashboard },
@@ -50,6 +52,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeNav, setActiveNav] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { completion: profileCompletion } = useAgentProfile();
 
   function handleLogout() {
     clearAuth();
@@ -191,16 +194,20 @@ export default function DashboardPage() {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
               </button>
               <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-                <motion.div
+                <motion.button
                   whileHover={{ scale: 1.05 }}
-                  className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm cursor-pointer"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setActiveNav('profile')}
+                  className="flex items-center gap-2.5 group"
                 >
-                  {initials}
-                </motion.div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-slate-700 leading-none">{agent?.fullName?.split(' ')[0] ?? 'Agent'}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Insurance Agent</p>
-                </div>
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:shadow-md transition-shadow">
+                    {initials}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-semibold text-slate-700 leading-none group-hover:text-blue-600 transition-colors">{agent?.fullName?.split(' ')[0] ?? 'Agent'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 group-hover:text-blue-400 transition-colors">View profile →</p>
+                  </div>
+                </motion.button>
               </div>
             </div>
           </div>
@@ -212,8 +219,41 @@ export default function DashboardPage() {
           {/* Team section */}
           {activeNav === 'team' && <TeamPage />}
 
+          {/* Profile section */}
+          {activeNav === 'profile' && <AgentProfilePage />}
+
           {/* Home section */}
           {activeNav === 'home' && (<>
+          {/* Profile completion nudge */}
+          {profileCompletion < 100 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                  <UserCircle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-amber-800">Complete your profile — {profileCompletion}% done</p>
+                  <p className="text-xs text-amber-600 mt-0.5 truncate">A complete profile builds trust with clients and unlocks all features</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="hidden sm:block w-24 h-1.5 bg-amber-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full" style={{ width: `${profileCompletion}%` }} />
+                </div>
+                <button
+                  onClick={() => setActiveNav('profile')}
+                  className="text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors border border-amber-300 whitespace-nowrap"
+                >
+                  Complete Now
+                </button>
+              </div>
+            </motion.div>
+          )}
           {/* Welcome banner */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}

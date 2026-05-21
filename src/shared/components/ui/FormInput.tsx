@@ -1,47 +1,45 @@
 'use client';
 
-import TextField from '@mui/material/TextField';
-import InputLabel from '@mui/material/InputLabel';
-import FormControl from '@mui/material/FormControl';
-import FormHelperText from '@mui/material/FormHelperText';
-import { forwardRef } from 'react';
+import { TextInputField, ValidationType } from 'ev-ui-lab';
 
 interface FormInputProps {
   label: string;
+  attrName?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
   error?: string;
   required?: boolean;
-  type?: string;
   maxLength?: number;
   disabled?: boolean;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
-  name?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  validationType?: ValidationType;
 }
 
-const FormInput = forwardRef<HTMLInputElement, FormInputProps>(function FormInput(
-  { label, placeholder, error, required, type = 'text', maxLength, disabled, ...rest },
-  ref,
-) {
+export default function FormInput({
+  label,
+  attrName = 'field',
+  value = '',
+  onChange,
+  placeholder,
+  error,
+  required,
+  maxLength,
+  disabled,
+  validationType,
+}: FormInputProps) {
   return (
-    <FormControl fullWidth error={!!error}>
-      <InputLabel required={required} sx={{ mb: 0.75, fontWeight: 600, fontSize: '0.875rem', color: '#334155' }}>
-        {label}
-      </InputLabel>
-      <TextField
-        inputRef={ref}
-        placeholder={placeholder}
-        type={type}
-        disabled={disabled}
-        error={!!error}
-        slotProps={{ htmlInput: { maxLength } }}
-        {...rest}
-      />
-      {error && <FormHelperText sx={{ color: '#ef4444', mt: 0.75, ml: 0, fontSize: '0.75rem' }}>{error}</FormHelperText>}
-    </FormControl>
+    <TextInputField
+      title={label}
+      value={value}
+      attrName={attrName}
+      value_update={(_attr, val) => onChange?.(val)}
+      placeholder={placeholder}
+      required={required}
+      max_length={maxLength}
+      disabled={disabled}
+      warn_status={!!error}
+      error_message={error}
+      validation_type={validationType}
+    />
   );
-});
-
-export default FormInput;
+}

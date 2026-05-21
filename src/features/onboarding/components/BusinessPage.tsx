@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { agentService } from '@/features/agent/services/agent.service';
 import OnboardingShell from '@/features/onboarding/components/OnboardingShell';
 import FormInput from '@/shared/components/ui/FormInput';
+import { Button } from 'ev-ui-lab';
 
 const schema = z.object({
   panNumber: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format (e.g. ABCDE1234F)').optional().or(z.literal('')),
@@ -26,7 +27,21 @@ export default function BusinessPage() {
   const [loading, setLoading] = useState(false);
   const [skipping, setSkipping] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Pre-fill from saved profile
+  useEffect(() => {
+    agentService.getMe().then((res) => {
+      const p = res.data?.profile;
+      if (!p) return;
+      reset({
+        panNumber: p.panNumber ?? '',
+        bankAccountNumber: p.bankAccountNumber ?? '',
+        ifscCode: p.ifscCode ?? '',
+        gstNumber: p.gstNumber ?? '',
+      });
+    }).catch(() => { /* silent */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -69,59 +84,91 @@ export default function BusinessPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <FormInput
-            {...register('panNumber')}
-            label="PAN Number"
-            placeholder="ABCDE1234F"
-            error={errors.panNumber?.message}
+          <Controller
+            name="panNumber"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="PAN Number"
+                attrName="panNumber"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="ABCDE1234F"
+                error={errors.panNumber?.message}
+              />
+            )}
           />
-          <FormInput
-            {...register('bankAccountNumber')}
-            label="Bank Account Number"
-            placeholder="123456789012"
-            inputMode="numeric"
-            error={errors.bankAccountNumber?.message}
+          <Controller
+            name="bankAccountNumber"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="Bank Account Number"
+                attrName="bankAccountNumber"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="123456789012"
+                validationType="NUMBER"
+                error={errors.bankAccountNumber?.message}
+              />
+            )}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <FormInput
-            {...register('ifscCode')}
-            label="IFSC Code"
-            placeholder="SBIN0001234"
-            error={errors.ifscCode?.message}
+          <Controller
+            name="ifscCode"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="IFSC Code"
+                attrName="ifscCode"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="SBIN0001234"
+                error={errors.ifscCode?.message}
+              />
+            )}
           />
-          <FormInput
-            {...register('gstNumber')}
-            label="GST Number"
-            placeholder="22AAAAA0000A1Z5"
-            error={errors.gstNumber?.message}
+          <Controller
+            name="gstNumber"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="GST Number"
+                attrName="gstNumber"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="22AAAAA0000A1Z5"
+                error={errors.gstNumber?.message}
+              />
+            )}
           />
         </div>
 
         <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
           <button
             type="button"
+            onClick={() => router.push('/onboarding/profile')}
+            className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors mr-auto"
+          >
+            ← Back
+          </button>
+          <Button
+            text={skipping ? 'Skipping…' : 'Skip for Now'}
+            className="outlinedBtn"
+            size="medium"
             onClick={handleSkip}
+            loader={skipping}
             disabled={skipping}
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-slate-400 text-slate-600 font-semibold px-6 py-3 rounded-xl text-sm transition-all disabled:opacity-50"
-          >
-            {skipping ? 'Skipping…' : 'Skip for Now'}
-          </button>
-          <button
-            type="submit"
+          />
+          <Button
+            text={loading ? 'Saving…' : 'Save & Continue →'}
+            className="primaryBtn"
+            size="medium"
+            onClick={handleSubmit(onSubmit)}
+            loader={loading}
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold px-8 py-3 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Saving…
-              </>
-            ) : <>Save & Continue <span>→</span></>}
-          </button>
+          />
         </div>
       </form>
     </OnboardingShell>

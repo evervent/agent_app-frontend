@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { agentService } from '@/features/agent/services/agent.service';
 import { AgentProfile, Workspace } from '@/features/agent/types/agent.types';
 
@@ -7,6 +7,7 @@ interface UseAgentProfileResult {
   workspace: Workspace | null;
   completion: number;
   loading: boolean;
+  refetch: () => void;
 }
 
 export function useAgentProfile(): UseAgentProfileResult {
@@ -15,7 +16,8 @@ export function useAgentProfile(): UseAgentProfileResult {
   const [completion, setCompletion] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProfile = useCallback(() => {
+    setLoading(true);
     agentService.getMe()
       .then((res) => {
         const p: AgentProfile | null = res.data?.profile ?? null;
@@ -28,5 +30,7 @@ export function useAgentProfile(): UseAgentProfileResult {
       .finally(() => setLoading(false));
   }, []);
 
-  return { profile, workspace, completion, loading };
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  return { profile, workspace, completion, loading, refetch: fetchProfile };
 }
