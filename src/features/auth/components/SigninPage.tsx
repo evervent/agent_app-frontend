@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,9 +8,10 @@ import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/store/authStore';
 import { AuthResponse } from '@/features/auth/types/auth.types';
 import { AxiosError } from 'axios';
-import { Smartphone, Lock, Target, RefreshCw, IndianRupee, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Smartphone, Lock, Target, RefreshCw, IndianRupee, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { TextInputField, Button } from 'ev-ui-lab';
 
 const otpSchema = z.object({
   mobile: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
@@ -38,19 +37,32 @@ export default function SigninPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [tab, setTab] = useState<'otp' | 'password'>('otp');
-  const [showPassword, setShowPassword] = useState(false);
 
+  // OTP form
+  const [otpForm, setOtpForm] = useState({ mobile: '' });
+  const [otpFormErrors, setOtpFormErrors] = useState<Partial<Record<'mobile', string>>>({});
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
-  const { register: regOtp, handleSubmit: submitOtp, formState: { errors: otpErrors } } = useForm<OtpForm>({ resolver: zodResolver(otpSchema) });
 
-  async function onSendOtp(data: OtpForm) {
+  function updateOtp(attr: string, val: string) {
+    setOtpForm((prev) => ({ ...prev, [attr]: val }));
+    setOtpFormErrors((prev) => ({ ...prev, [attr]: undefined }));
+  }
+
+  async function onSendOtp() {
+    const result = otpSchema.safeParse(otpForm);
+    if (!result.success) {
+      const errs: Partial<Record<'mobile', string>> = {};
+      result.error.issues.forEach((e) => { if (e.path[0]) errs[e.path[0] as 'mobile'] = e.message; });
+      setOtpFormErrors(errs);
+      return;
+    }
     setOtpLoading(true);
     setOtpError('');
     try {
-      await api.post('/auth/send-otp', { mobile: data.mobile });
-      sessionStorage.setItem('signin_mobile', data.mobile);
-      toast.success('OTP sent to +91 ' + data.mobile);
+      await api.post('/auth/send-otp', { mobile: otpForm.mobile });
+      sessionStorage.setItem('signin_mobile', otpForm.mobile);
+      toast.success('OTP sent to +91 ' + otpForm.mobile);
       router.push('/auth/signin/verify');
     } catch (err) {
       const e = err as AxiosError<{ message: string | string[] }>;
@@ -63,15 +75,29 @@ export default function SigninPage() {
     }
   }
 
+  // Password form
+  const [pwForm, setPwForm] = useState({ mobile: '', password: '' });
+  const [pwFormErrors, setPwFormErrors] = useState<Partial<Record<'mobile' | 'password', string>>>({});
   const [pwError, setPwError] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
-  const { register: regPw, handleSubmit: submitPw, formState: { errors: pwErrors } } = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
 
-  async function onSigninPassword(data: PasswordForm) {
+  function updatePw(attr: string, val: string) {
+    setPwForm((prev) => ({ ...prev, [attr]: val }));
+    setPwFormErrors((prev) => ({ ...prev, [attr]: undefined }));
+  }
+
+  async function onSigninPassword() {
+    const result = passwordSchema.safeParse(pwForm);
+    if (!result.success) {
+      const errs: Partial<Record<'mobile' | 'password', string>> = {};
+      result.error.issues.forEach((e) => { if (e.path[0]) errs[e.path[0] as 'mobile' | 'password'] = e.message; });
+      setPwFormErrors(errs);
+      return;
+    }
     setPwLoading(true);
     setPwError('');
     try {
-      const { data: res } = await api.post<AuthResponse>('/auth/signin/password', data);
+      const { data: res } = await api.post<AuthResponse>('/auth/signin/password', pwForm);
       setAuth({ agent: res.agent, accessToken: res.accessToken, refreshToken: res.refreshToken });
       toast.success('Welcome back, ' + res.agent.fullName.split(' ')[0] + '!');
       routeByStep(res.onboardingStep, router);
@@ -180,57 +206,79 @@ export default function SigninPage() {
           </div>
 
           {tab === 'otp' && (
-            <form onSubmit={submitOtp(onSendOtp)} className="space-y-5">
+            <div className="space-y-4">
               {otpError && (
                 <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span className="text-sm">{otpError}</span>
                 </div>
               )}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Number</label>
-                <div className="flex shadow-sm rounded-xl overflow-hidden border border-slate-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all">
-                  <span className="flex items-center px-3.5 bg-slate-50 border-r border-slate-200 text-slate-600 text-sm font-medium shrink-0">+91</span>
-                  <input {...regOtp('mobile')} placeholder="9876543210" inputMode="numeric" maxLength={10} className="flex-1 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none" />
-                </div>
-                {otpErrors.mobile && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{otpErrors.mobile.message}</p>}
-              </div>
-              <button type="submit" disabled={otpLoading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3.5 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2">
-                {otpLoading ? (<><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Sending OTP…</>) : 'Send OTP'}
-              </button>
-            </form>
+              <TextInputField
+                title="Mobile Number"
+                value={otpForm.mobile}
+                attrName="mobile"
+                value_update={updateOtp}
+                validation_type="MOBILE"
+                required={true}
+                placeholder="9876543210"
+                max_length={10}
+                warn_status={!!otpFormErrors.mobile}
+                error_message={otpFormErrors.mobile}
+              />
+              <Button
+                text={otpLoading ? 'Sending OTP…' : 'Send OTP'}
+                className="primaryBtn"
+                size="large"
+                onClick={onSendOtp}
+                fullWidth={true}
+                loader={otpLoading}
+                disabled={otpLoading}
+              />
+            </div>
           )}
 
           {tab === 'password' && (
-            <form onSubmit={submitPw(onSigninPassword)} className="space-y-5">
+            <div className="space-y-4">
               {pwError && (
                 <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span className="text-sm">{pwError}</span>
                 </div>
               )}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Number</label>
-                <div className="flex shadow-sm rounded-xl overflow-hidden border border-slate-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all">
-                  <span className="flex items-center px-3.5 bg-slate-50 border-r border-slate-200 text-slate-600 text-sm font-medium shrink-0">+91</span>
-                  <input {...regPw('mobile')} placeholder="9876543210" inputMode="numeric" maxLength={10} className="flex-1 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none" />
-                </div>
-                {pwErrors.mobile && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{pwErrors.mobile.message}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">MPIN <span className="text-slate-400 font-normal">(6-digit PIN)</span></label>
-                <div className="flex bg-white border border-slate-300 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                  <input {...regPw('password')} type={showPassword ? 'text' : 'password'} placeholder="6-digit MPIN" inputMode="numeric" maxLength={6} className="flex-1 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none rounded-l-xl tracking-widest" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="px-3.5 text-slate-400 hover:text-slate-600 transition-colors">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {pwErrors.password && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><span>⚠</span>{pwErrors.password.message}</p>}
-              </div>
-              <button type="submit" disabled={pwLoading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3.5 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2">
-                {pwLoading ? (<><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Signing in…</>) : 'Sign In'}
-              </button>
-            </form>
+              <TextInputField
+                title="Mobile Number"
+                value={pwForm.mobile}
+                attrName="mobile"
+                value_update={updatePw}
+                validation_type="MOBILE"
+                required={true}
+                placeholder="9876543210"
+                max_length={10}
+                warn_status={!!pwFormErrors.mobile}
+                error_message={pwFormErrors.mobile}
+              />
+              <TextInputField
+                title="MPIN (6-digit PIN)"
+                value={pwForm.password}
+                attrName="password"
+                value_update={updatePw}
+                validation_type="PASSWORD"
+                required={true}
+                placeholder="6-digit MPIN"
+                max_length={6}
+                warn_status={!!pwFormErrors.password}
+                error_message={pwFormErrors.password}
+              />
+              <Button
+                text={pwLoading ? 'Signing in…' : 'Sign In'}
+                className="primaryBtn"
+                size="large"
+                onClick={onSigninPassword}
+                fullWidth={true}
+                loader={pwLoading}
+                disabled={pwLoading}
+              />
+            </div>
           )}
 
           <p className="text-center text-sm text-slate-500 mt-6">

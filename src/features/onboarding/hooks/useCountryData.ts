@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { locationService } from '@/features/onboarding/services/onboarding.service';
 
-interface Option { label: string; value: string; }
+interface Option { label: string; value: string; [key: string]: unknown; }
 
 interface UseCountryDataResult {
   states: Option[];

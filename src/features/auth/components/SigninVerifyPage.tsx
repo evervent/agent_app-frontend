@@ -9,6 +9,7 @@ import { AxiosError } from 'axios';
 import OtpInput from '@/features/auth/components/OtpInput';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { Button } from 'ev-ui-lab';
 
 export default function SigninVerifyPage() {
   const router = useRouter();
@@ -147,29 +148,28 @@ export default function SigninVerifyPage() {
             <OtpInput value={otp} onChange={setOtp} disabled={loading} />
           </div>
 
-          <button
+          <Button
+            text={loading ? 'Verifying…' : 'Verify & Sign In'}
+            className="primaryBtn"
+            size="large"
             onClick={handleVerify}
+            loader={loading}
             disabled={loading || otp.length < 6}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3.5 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Verifying…
-              </>
-            ) : 'Verify & Sign In'}
-          </button>
+            fullWidth={true}
+          />
 
           <div className="text-center mt-5 text-sm text-slate-500">
             {countdown > 0 ? (
               <span>Resend OTP in <span className="font-semibold text-blue-600 tabular-nums">{countdown}s</span></span>
             ) : (
-              <button onClick={handleResend} disabled={resending} className="text-blue-600 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
-                {resending ? 'Sending…' : 'Resend OTP'}
-              </button>
+              <Button
+                text={resending ? 'Sending…' : 'Resend OTP'}
+                className="textBtn"
+                size="small"
+                onClick={handleResend}
+                loader={resending}
+                disabled={resending}
+              />
             )}
           </div>
         </div>

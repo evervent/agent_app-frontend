@@ -11,6 +11,7 @@ import { agentService } from '@/features/agent/services/agent.service';
 import OnboardingShell from '@/features/onboarding/components/OnboardingShell';
 import FormInput from '@/shared/components/ui/FormInput';
 import ProductChips from '@/features/onboarding/components/ProductChips';
+import { Button } from 'ev-ui-lab';
 
 const IRDA_REGEX = /^IND[0-9]{10,11}$|^IND-[0-9]{4}-[0-9]{6,7}$/;
 
@@ -32,7 +33,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
+  const { handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productLines: [] },
   });
@@ -83,29 +84,52 @@ export default function ProfilePage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <FormInput
-            {...register('irdaLicenseNumber')}
-            label="IRDA License Number"
-            placeholder="IND-2021-1234567"
-            maxLength={15}
-            error={errors.irdaLicenseNumber?.message}
+          <Controller
+            name="irdaLicenseNumber"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="IRDA License Number"
+                attrName="irdaLicenseNumber"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="IND-2021-1234567"
+                maxLength={15}
+                error={errors.irdaLicenseNumber?.message}
+              />
+            )}
           />
-          <FormInput
-            {...register('agencyName')}
-            label="Agency / Business Name"
-            placeholder="Kumar Insurance"
-            error={errors.agencyName?.message}
+          <Controller
+            name="agencyName"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="Agency / Business Name"
+                attrName="agencyName"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="Kumar Insurance"
+                error={errors.agencyName?.message}
+              />
+            )}
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <FormInput
-            {...register('experienceYears')}
-            label="Years of Experience"
-            placeholder="5"
-            type="number"
-            inputMode="numeric"
-            error={errors.experienceYears?.message}
+          <Controller
+            name="experienceYears"
+            control={control}
+            render={({ field }) => (
+              <FormInput
+                label="Years of Experience"
+                attrName="experienceYears"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="5"
+                validationType="NUMBER"
+                error={errors.experienceYears?.message}
+              />
+            )}
           />
         </div>
 
@@ -123,21 +147,14 @@ export default function ProfilePage() {
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
           <p className="text-xs text-slate-400">All fields marked * are required</p>
-          <button
-            type="submit"
+          <Button
+            text={loading ? 'Saving…' : 'Continue →'}
+            className="primaryBtn"
+            size="medium"
+            onClick={handleSubmit(onSubmit)}
+            loader={loading}
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold px-8 py-3 rounded-xl text-sm shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Saving…
-              </>
-            ) : <>Continue <span>→</span></>}
-          </button>
+          />
         </div>
       </form>
     </OnboardingShell>

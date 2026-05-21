@@ -5,10 +5,10 @@ import {
   Chip,
   IconButton,
   MenuItem,
-  Select,
   Tooltip,
   Menu,
 } from '@mui/material';
+import { SelectInputField } from 'ev-ui-lab';
 import { motion } from 'framer-motion';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -20,13 +20,16 @@ interface MemberCardProps {
   onUpdateRole: (memberId: string, roleId: string) => Promise<void>;
   onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
   onRemove: (memberId: string) => Promise<void>;
+  onClick?: () => void;
 }
 
 const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  owner:        { bg: '#dbeafe', color: '#1d4ed8', label: 'Owner' },
-  sub_agent:    { bg: '#ede9fe', color: '#6d28d9', label: 'Sub Agent' },
-  support_user: { bg: '#fef3c7', color: '#b45309', label: 'Support' },
-  viewer:       { bg: '#f1f5f9', color: '#475569', label: 'Viewer' },
+  owner:          { bg: '#dbeafe', color: '#1d4ed8', label: 'Owner' },
+  sub_agent:      { bg: '#ede9fe', color: '#6d28d9', label: 'Sub Agent' },
+  telecaller:     { bg: '#cffafe', color: '#0e7490', label: 'Telecaller' },
+  operations_user:{ bg: '#fef3c7', color: '#b45309', label: 'Operations' },
+  support_user:   { bg: '#fef3c7', color: '#b45309', label: 'Support' },
+  viewer:         { bg: '#f1f5f9', color: '#475569', label: 'Viewer' },
 };
 
 function getInitials(name: string) {
@@ -38,7 +41,7 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export default function MemberCard({ member, roles, onUpdateRole, onToggleActive, onRemove }: MemberCardProps) {
+export default function MemberCard({ member, roles, onUpdateRole, onToggleActive, onRemove, onClick }: MemberCardProps) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -77,7 +80,8 @@ export default function MemberCard({ member, roles, onUpdateRole, onToggleActive
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onClick}
     >
       {/* Avatar */}
       <Avatar
@@ -101,40 +105,26 @@ export default function MemberCard({ member, roles, onUpdateRole, onToggleActive
         <p className="text-slate-400 text-xs mt-0.5 truncate">{member.agent?.mobile}</p>
       </div>
 
-      {/* Role chip + select on md+ */}
-      <div className="hidden sm:flex items-center gap-2">
-        <Select
-          size="small"
+      {/* Role selector on md+ */}
+      <div className="hidden sm:flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <SelectInputField
+          title=""
           value={member.roleId}
+          attrName="role"
+          value_update={(_attr, val) => handleRoleChange(val)}
+          options={invitableRoles.map((role) => ({
+            value: role.id,
+            label: role.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          }))}
           disabled={updatingRole}
-          onChange={(e) => handleRoleChange(e.target.value)}
-          sx={{
-            fontSize: '0.75rem',
-            borderRadius: 2,
-            '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: roleStyle.bg === '#f1f5f9' ? '#cbd5e1' : 'transparent',
-              borderWidth: 1,
-            },
-            backgroundColor: roleStyle.bg,
-            color: roleStyle.color,
-            fontWeight: 600,
-            minWidth: 120,
-            height: 30,
-          }}
-        >
-          {invitableRoles.map((role) => (
-            <MenuItem key={role.id} value={role.id} sx={{ fontSize: '0.75rem' }}>
-              {role.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-            </MenuItem>
-          ))}
-        </Select>
+        />
       </div>
 
       {/* Status chip */}
       <Chip
         label={member.isActive ? 'Active' : 'Inactive'}
         size="small"
-        onClick={!toggling ? handleToggle : undefined}
+        onClick={!toggling ? (e) => { e.stopPropagation(); handleToggle(); } : undefined}
         sx={{
           cursor: 'pointer',
           fontWeight: 600,
@@ -153,7 +143,7 @@ export default function MemberCard({ member, roles, onUpdateRole, onToggleActive
       <Tooltip title="Actions">
         <IconButton
           size="small"
-          onClick={(e) => setMenuAnchor(e.currentTarget)}
+          onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }}
           sx={{ color: '#94a3b8' }}
         >
           <MoreVertical size={16} />

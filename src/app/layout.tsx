@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "ev-ui-lab/styles.css";
 import { Toaster } from "react-hot-toast";
 import MuiProvider from "@/shared/components/MuiProvider";
 

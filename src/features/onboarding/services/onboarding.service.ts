@@ -4,7 +4,7 @@
  */
 
 interface StateOption { name: string; }
-interface Option { label: string; value: string; }
+interface Option { label: string; value: string; [key: string]: unknown; }
 
 export const locationService = {
   /** Fetch all Indian states */
