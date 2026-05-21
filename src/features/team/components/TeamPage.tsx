@@ -28,8 +28,9 @@ export default function TeamPage() {
     );
   });
 
-  async function handleInvite(mobile: string, roleId: string) {
-    await inviteMember({ mobile, roleId });
+  async function handleInvite(identifier: string, roleId: string, byEmail?: boolean) {
+    const payload = byEmail ? { email: identifier, roleId } : { mobile: identifier, roleId };
+    await inviteMember(payload);
     toast.success('Member invited successfully');
   }
 

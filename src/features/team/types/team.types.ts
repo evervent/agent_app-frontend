@@ -31,7 +31,8 @@ export interface Role {
 }
 
 export interface InviteMemberPayload {
-  mobile: string;
+  mobile?: string;
+  email?: string;
   roleId: string;
 }
 

@@ -14,7 +14,7 @@ interface InviteDialogProps {
   open: boolean;
   roles: Role[];
   onClose: () => void;
-  onInvite: (mobile: string, roleId: string) => Promise<void>;
+  onInvite: (identifier: string, roleId: string, byEmail?: boolean) => Promise<void>;
 }
 
 const ROLE_ACCESS: Record<string, { can: string[]; cannot: string[] }> = {
@@ -37,7 +37,9 @@ const ROLE_ACCESS: Record<string, { can: string[]; cannot: string[] }> = {
 };
 
 export default function InviteDialog({ open, roles, onClose, onInvite }: InviteDialogProps) {
+  const [byEmail, setByEmail] = useState(false);
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,20 +51,22 @@ export default function InviteDialog({ open, roles, onClose, onInvite }: InviteD
   function handleClose() {
     if (loading) return;
     setMobile('');
+    setEmail('');
     setRoleId('');
     setError(null);
     onClose();
   }
 
   async function handleSubmit() {
-    if (!mobile.trim() || !roleId) {
+    const identifier = byEmail ? email.trim() : mobile.trim();
+    if (!identifier || !roleId) {
       setError('Please fill all fields');
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      await onInvite(mobile.trim(), roleId);
+      await onInvite(identifier, roleId, byEmail);
       handleClose();
     } catch (err: unknown) {
       const msg =
@@ -73,6 +77,8 @@ export default function InviteDialog({ open, roles, onClose, onInvite }: InviteD
       setLoading(false);
     }
   }
+
+  const canSubmit = byEmail ? email.trim().length > 0 && roleId : mobile.trim().length > 0 && roleId;
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
@@ -87,16 +93,44 @@ export default function InviteDialog({ open, roles, onClose, onInvite }: InviteD
           </div>
         )}
 
-        <TextInputField
-          title="Mobile Number"
-          placeholder="e.g. 9876543210"
-          value={mobile}
-          attrName="mobile"
-          value_update={(_attr, val) => setMobile(val)}
-          validation_type="MOBILE"
-          disabled={loading}
-          max_length={15}
-        />
+        {/* Mobile / Email toggle */}
+        <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+          <button
+            onClick={() => { setByEmail(false); setEmail(''); }}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${!byEmail ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Mobile Number
+          </button>
+          <button
+            onClick={() => { setByEmail(true); setMobile(''); }}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${byEmail ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Email Address
+          </button>
+        </div>
+
+        {!byEmail ? (
+          <TextInputField
+            title="Mobile Number"
+            placeholder="e.g. 9876543210"
+            value={mobile}
+            attrName="mobile"
+            value_update={(_attr, val) => setMobile(val)}
+            validation_type="MOBILE"
+            disabled={loading}
+            max_length={15}
+          />
+        ) : (
+          <TextInputField
+            title="Email Address"
+            placeholder="e.g. agent@example.com"
+            value={email}
+            attrName="email"
+            value_update={(_attr, val) => setEmail(val)}
+            validation_type="EMAIL"
+            disabled={loading}
+          />
+        )}
 
         <SelectInputField
           title="Role"
@@ -146,7 +180,7 @@ export default function InviteDialog({ open, roles, onClose, onInvite }: InviteD
           size="medium"
           onClick={handleSubmit}
           loader={loading}
-          disabled={loading || !mobile.trim() || !roleId}
+          disabled={loading || !canSubmit}
         />
       </DialogActions>
     </Dialog>

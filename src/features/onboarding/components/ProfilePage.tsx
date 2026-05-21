@@ -11,7 +11,15 @@ import { agentService } from '@/features/agent/services/agent.service';
 import OnboardingShell from '@/features/onboarding/components/OnboardingShell';
 import FormInput from '@/shared/components/ui/FormInput';
 import ProductChips from '@/features/onboarding/components/ProductChips';
-import { Button } from 'ev-ui-lab';
+import { Button, SelectInputField } from 'ev-ui-lab';
+
+const EXPERIENCE_OPTIONS = [
+  { value: '0', label: 'Less than 1 year' },
+  ...Array.from({ length: 50 }, (_, i) => ({
+    value: String(i + 1),
+    label: `${i + 1} ${i + 1 === 1 ? 'year' : 'years'}`,
+  })),
+];
 
 const IRDA_REGEX = /^IND[0-9]{10,11}$|^IND-[0-9]{4}-[0-9]{6,7}$/;
 
@@ -120,14 +128,13 @@ export default function ProfilePage() {
             name="experienceYears"
             control={control}
             render={({ field }) => (
-              <FormInput
-                label="Years of Experience"
-                attrName="experienceYears"
+              <SelectInputField
+                title="Years of Experience"
                 value={field.value ?? ''}
-                onChange={field.onChange}
-                placeholder="5"
-                validationType="NUMBER"
-                error={errors.experienceYears?.message}
+                attrName="experienceYears"
+                value_update={(_attr, val) => field.onChange(val)}
+                options={EXPERIENCE_OPTIONS}
+                placeholder="Select experience"
               />
             )}
           />
