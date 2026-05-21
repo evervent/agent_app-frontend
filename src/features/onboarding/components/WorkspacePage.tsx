@@ -35,10 +35,25 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(false);
   const { states, cities, citiesLoading, loadCities } = useCountryData();
 
-  const { handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
+  const { handleSubmit, control, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { productInterests: [], teamType: 'solo' },
   });
+
+  // Pre-fill from existing workspace OR fall back to agencyName from profile
+  useEffect(() => {
+    agentService.getMe().then((res) => {
+      const w = res.data?.workspace;
+      const p = res.data?.profile;
+      reset({
+        businessName: w?.businessName ?? p?.agencyName ?? '',
+        state:        w?.state ?? '',
+        city:         w?.city ?? '',
+        productInterests: w?.productInterests ?? [],
+        teamType:     w?.teamType ?? 'solo',
+      });
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const watchedState = watch('state');
   useEffect(() => { loadCities(watchedState); }, [watchedState]); // eslint-disable-line react-hooks/exhaustive-deps
