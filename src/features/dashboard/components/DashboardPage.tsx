@@ -7,20 +7,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, FileText, Shield, RefreshCw, IndianRupee, Building2,
   Settings, Bell, Search, LogOut, ChevronRight, TrendingUp, Target,
-  FilePlus, Send, UserPlus, ArrowUpRight, Sparkles, Menu, X, UserCircle,
+  FilePlus, Send, UserPlus, ArrowUpRight, Sparkles, Menu, X, UserCircle, ShieldCheck,
 } from 'lucide-react';
 import { TeamPage } from '@/features/team';
 import AgentProfilePage from '@/features/agent/components/AgentProfilePage';
 import { useAgentProfile } from '@/features/agent/hooks/useAgentProfile';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
+import RolesPage from '@/features/roles/components/RolesPage';
 
 const NAV_ITEMS = [
-  { id: 'home',     label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'leads',    label: 'Leads',     Icon: Users },
-  { id: 'quotes',   label: 'Quotes',    Icon: FileText },
-  { id: 'policies', label: 'Policies',  Icon: Shield },
-  { id: 'renewals', label: 'Renewals',  Icon: RefreshCw },
-  { id: 'earnings', label: 'Earnings',  Icon: IndianRupee },
-  { id: 'team',     label: 'Team',      Icon: Building2 },
+  { id: 'home',     label: 'Dashboard',          Icon: LayoutDashboard, permission: null },
+  { id: 'leads',    label: 'Leads',              Icon: Users,           permission: 'leads.read' },
+  { id: 'quotes',   label: 'Quotes',             Icon: FileText,        permission: 'quotes.read' },
+  { id: 'policies', label: 'Policies',           Icon: Shield,          permission: 'policies.read' },
+  { id: 'renewals', label: 'Renewals',           Icon: RefreshCw,       permission: null },
+  { id: 'earnings', label: 'Earnings',           Icon: IndianRupee,     permission: null },
+  { id: 'team',     label: 'Team',               Icon: Building2,       permission: 'workspace.manage_members' },
+  { id: 'roles',    label: 'Roles & Permissions', Icon: ShieldCheck,    permission: 'roles.read' },
 ];
 
 const STAT_CARDS = [
@@ -38,21 +41,31 @@ const QUICK_ACTIONS = [
 ];
 
 const MODULES = [
-  { Icon: Target,      name: 'Leads',    desc: 'Track prospects',    color: 'text-blue-500' },
-  { Icon: FileText,    name: 'Quotes',   desc: 'Generate quotes',    color: 'text-violet-500' },
-  { Icon: Shield,      name: 'Policies', desc: 'Manage policies',    color: 'text-indigo-500' },
-  { Icon: RefreshCw,   name: 'Renewals', desc: 'Auto-reminders',     color: 'text-amber-500' },
-  { Icon: IndianRupee, name: 'Earnings', desc: 'Commission tracker', color: 'text-emerald-500' },
-  { Icon: Building2,   name: 'Team',     desc: 'Sub-agents',         color: 'text-slate-500' },
+  { Icon: Target,      name: 'Leads',    desc: 'Track prospects',    color: 'text-blue-500',    permission: 'leads.read' },
+  { Icon: FileText,    name: 'Quotes',   desc: 'Generate quotes',    color: 'text-violet-500',  permission: 'quotes.read' },
+  { Icon: Shield,      name: 'Policies', desc: 'Manage policies',    color: 'text-indigo-500',  permission: 'policies.read' },
+  { Icon: RefreshCw,   name: 'Renewals', desc: 'Auto-reminders',     color: 'text-amber-500',   permission: null },
+  { Icon: IndianRupee, name: 'Earnings', desc: 'Commission tracker', color: 'text-emerald-500', permission: null },
+  { Icon: Building2,   name: 'Team',     desc: 'Sub-agents',         color: 'text-slate-500',   permission: 'workspace.manage_members' },
 ];
 
 export default function DashboardPage() {
   const agent = useAuthStore((s) => s.agent);
+  const accountType = useAuthStore((s) => s.accountType);
+  const permissions = useAuthStore((s) => s.permissions);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const router = useRouter();
   const [activeNav, setActiveNav] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { completion: profileCompletion } = useAgentProfile();
+
+  // Filter nav items based on permissions (owner has '*' wildcard = all pass)
+  const hasPermission = (p: string | null) => {
+    if (!p) return true;
+    if (permissions.includes('*')) return true;
+    return permissions.includes(p);
+  };
+  const navItems = NAV_ITEMS.filter((item) => hasPermission(item.permission));
 
   function handleLogout() {
     clearAuth();
@@ -93,7 +106,7 @@ export default function DashboardPage() {
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ id, label, Icon }) => {
+        {navItems.map(({ id, label, Icon }) => {
           const isActive = id === activeNav;
           return (
             <button
@@ -189,6 +202,7 @@ export default function DashboardPage() {
               />
             </div>
             <div className="flex items-center gap-2 ml-auto">
+              <WorkspaceSwitcher />
               <button className="relative w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center transition-colors">
                 <Bell className="w-4 h-4 text-slate-500" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
@@ -218,6 +232,9 @@ export default function DashboardPage() {
 
           {/* Team section */}
           {activeNav === 'team' && <TeamPage />}
+
+          {/* Roles & Permissions section */}
+          {activeNav === 'roles' && <RolesPage onBack={() => setActiveNav('home')} />}
 
           {/* Profile section */}
           {activeNav === 'profile' && <AgentProfilePage />}
@@ -341,7 +358,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {MODULES.map(({ Icon, name, desc, color }) => (
+                {MODULES.filter((m) => hasPermission(m.permission)).map(({ Icon, name, desc, color }) => (
                   <motion.div
                     key={name}
                     variants={fadeUp}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TeamMember, Role, InviteMemberPayload, UpdateMemberPayload } from '../types/team.types';
+import { TeamMember, Role, InviteMemberPayload, UpdateMemberPayload, InviteResponse } from '../types/team.types';
 import { teamService } from '../services/team.service';
 
 export function useTeamMembers() {
@@ -29,10 +29,13 @@ export function useTeamMembers() {
     fetchMembers();
   }, [fetchMembers]);
 
-  const inviteMember = useCallback(async (payload: InviteMemberPayload): Promise<void> => {
+  const inviteMember = useCallback(async (payload: InviteMemberPayload): Promise<InviteResponse> => {
     const res = await teamService.inviteMember(payload);
-    setMembers((prev) => [...prev, res.data]);
-  }, []);
+    // Backend returns { message, token } — not a member yet, so don't update list.
+    // Refetch after a short delay so any immediate membership (existing user) shows up.
+    setTimeout(() => fetchMembers(), 500);
+    return res.data as InviteResponse;
+  }, [fetchMembers]);
 
   const updateMember = useCallback(async (memberId: string, payload: UpdateMemberPayload): Promise<void> => {
     const res = await teamService.updateMember(memberId, payload);

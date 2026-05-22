@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AxiosError } from 'axios';
 import { Rocket } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -31,9 +31,19 @@ type FormData = z.infer<typeof schema>;
 
 export default function WorkspacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isCreateFlow = searchParams.get('create') === 'true'; // member explicitly creating own workspace
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { states, cities, citiesLoading, loadCities } = useCountryData();
+
+  // Members are redirected to /onboarding/complete UNLESS they're explicitly creating a new workspace
+  const accountType = useAuthStore((s) => s.accountType);
+  useEffect(() => {
+    if (accountType === 'member' && !isCreateFlow) {
+      router.replace('/onboarding/complete');
+    }
+  }, [accountType, isCreateFlow, router]);
 
   const { handleSubmit, control, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -69,14 +79,20 @@ export default function WorkspacePage() {
       if (refreshToken) {
         try {
           const { data: tokens } = await api.post('/auth/refresh', { refreshToken });
-          setAuth({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+          setAuth({
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accountType: tokens.accountType ?? 'owner',
+            workspaceName: data.businessName,
+          });
         } catch {
-          // Non-fatal — user can still proceed, token refreshes on next 401
+          // Non-fatal
         }
       }
 
       toast.success('Workspace created! Welcome aboard 🎉');
-      router.push('/onboarding/complete');
+      // If coming from dashboard create flow, go back to dashboard; otherwise continue onboarding
+      router.push(isCreateFlow ? '/dashboard' : '/onboarding/complete');
     } catch (err) {
       const e = err as AxiosError<{ message: string | string[] }>;
       const msg = e.response?.data?.message;

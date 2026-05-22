@@ -18,6 +18,7 @@ export interface TeamMember {
   agentId: string;
   roleId: string;
   isActive: boolean;
+  status: 'invited' | 'active' | 'suspended' | 'removed';
   joinedAt: string;
   agent: TeamMemberAgent;
   role: TeamMemberRole;
@@ -39,4 +40,10 @@ export interface InviteMemberPayload {
 export interface UpdateMemberPayload {
   roleId?: string;
   isActive?: boolean;
+  status?: 'active' | 'suspended' | 'removed';
+}
+
+export interface InviteResponse {
+  message: string;
+  token: string;
 }

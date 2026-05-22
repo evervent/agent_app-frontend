@@ -28,10 +28,11 @@ export default function TeamPage() {
     );
   });
 
-  async function handleInvite(identifier: string, roleId: string, byEmail?: boolean) {
+  async function handleInvite(identifier: string, roleId: string, byEmail?: boolean): Promise<string> {
     const payload = byEmail ? { email: identifier, roleId } : { mobile: identifier, roleId };
-    await inviteMember(payload);
-    toast.success('Member invited successfully');
+    const result = await inviteMember(payload);
+    toast.success('Invite sent successfully!');
+    return result.token;
   }
 
   async function handleUpdateRole(memberId: string, roleId: string) {
@@ -44,10 +45,10 @@ export default function TeamPage() {
     }
   }
 
-  async function handleToggleActive(memberId: string, isActive: boolean) {
+  async function handleToggleStatus(memberId: string, newStatus: 'active' | 'suspended') {
     try {
-      await updateMember(memberId, { isActive });
-      toast.success(isActive ? 'Member activated' : 'Member deactivated');
+      await updateMember(memberId, { status: newStatus });
+      toast.success(newStatus === 'active' ? 'Member activated' : 'Member suspended');
     } catch {
       toast.error('Failed to update member status');
       refetch();
@@ -103,8 +104,9 @@ export default function TeamPage() {
         >
           {[
             { label: 'Total Members', value: members.length, color: 'text-slate-700', bg: 'bg-slate-50 border-slate-200' },
-            { label: 'Active', value: members.filter((m) => m.isActive).length, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-            { label: 'Inactive', value: members.filter((m) => !m.isActive).length, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+            { label: 'Active', value: members.filter((m) => m.status === 'active').length, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: 'Suspended', value: members.filter((m) => m.status === 'suspended').length, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+            { label: 'Invited', value: members.filter((m) => m.status === 'invited').length, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
             { label: 'Roles', value: [...new Set(members.map((m) => m.roleId))].length, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={`border rounded-xl px-4 py-3 ${bg}`}>
@@ -168,7 +170,7 @@ export default function TeamPage() {
                     member={member}
                     roles={roles}
                     onUpdateRole={handleUpdateRole}
-                    onToggleActive={handleToggleActive}
+                    onToggleStatus={handleToggleStatus}
                     onRemove={handleRemove}
                     onClick={() => setDrawerMemberId(member.id)}
                   />
@@ -225,7 +227,7 @@ export default function TeamPage() {
         open={!!drawerMemberId}
         onClose={() => setDrawerMemberId(null)}
         onUpdateRole={handleUpdateRole}
-        onToggleActive={handleToggleActive}
+        onToggleStatus={handleToggleStatus}
         onRemove={handleRemove}
       />
     </div>

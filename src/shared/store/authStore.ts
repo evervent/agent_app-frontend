@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Agent } from '@/features/auth/types/auth.types';
+import { Agent, ContextItem } from '@/features/auth/types/auth.types';
 
 interface AuthState {
   agent: Agent | null;
   accessToken: string | null;
   refreshToken: string | null;
-  setAuth: (data: { agent?: Agent; accessToken?: string; refreshToken?: string }) => void;
+  accountType: 'owner' | 'member' | 'guest' | null;
+  permissions: string[]; // e.g. ['leads.create', 'leads.read'] or ['*'] for owner
+  workspaceName: string | null;
+  pendingContexts: ContextItem[] | null;
+  preAuthToken: string | null;
+  setAuth: (data: { agent?: Agent; accessToken?: string; refreshToken?: string; accountType?: 'owner' | 'member' | 'guest'; permissions?: string[]; workspaceName?: string }) => void;
+  setPendingContexts: (contexts: ContextItem[], preAuthToken: string, agent: Agent) => void;
   clearAuth: () => void;
 }
 
@@ -27,17 +33,30 @@ export const useAuthStore = create<AuthState>()(
       agent: null,
       accessToken: null,
       refreshToken: null,
+      accountType: null,
+      permissions: [],
+      workspaceName: null,
+      pendingContexts: null,
+      preAuthToken: null,
       setAuth: (data) => {
         if (data.accessToken) setCookie('agent-access-token', data.accessToken, 1);
         set((state) => ({
           agent: data.agent !== undefined ? data.agent : state.agent,
           accessToken: data.accessToken !== undefined ? data.accessToken : state.accessToken,
           refreshToken: data.refreshToken !== undefined ? data.refreshToken : state.refreshToken,
+          accountType: data.accountType !== undefined ? data.accountType : state.accountType,
+          permissions: data.permissions !== undefined ? data.permissions : state.permissions,
+          workspaceName: data.workspaceName !== undefined ? data.workspaceName : state.workspaceName,
+          pendingContexts: null,
+          preAuthToken: null,
         }));
+      },
+      setPendingContexts: (contexts, preAuthToken, agent) => {
+        set({ pendingContexts: contexts, preAuthToken, agent });
       },
       clearAuth: () => {
         deleteCookie('agent-access-token');
-        set({ agent: null, accessToken: null, refreshToken: null });
+        set({ agent: null, accessToken: null, refreshToken: null, accountType: null, permissions: [], workspaceName: null, pendingContexts: null, preAuthToken: null });
       },
     }),
     {

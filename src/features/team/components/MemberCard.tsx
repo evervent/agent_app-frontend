@@ -18,7 +18,7 @@ interface MemberCardProps {
   member: TeamMember;
   roles: Role[];
   onUpdateRole: (memberId: string, roleId: string) => Promise<void>;
-  onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
+  onToggleStatus: (memberId: string, newStatus: 'active' | 'suspended') => Promise<void>;
   onRemove: (memberId: string) => Promise<void>;
   onClick?: () => void;
 }
@@ -41,7 +41,7 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export default function MemberCard({ member, roles, onUpdateRole, onToggleActive, onRemove, onClick }: MemberCardProps) {
+export default function MemberCard({ member, roles, onUpdateRole, onToggleStatus, onRemove, onClick }: MemberCardProps) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -62,7 +62,8 @@ export default function MemberCard({ member, roles, onUpdateRole, onToggleActive
   async function handleToggle() {
     setToggling(true);
     try {
-      await onToggleActive(member.id, !member.isActive);
+      const newStatus = member.status === 'active' ? 'suspended' : 'active';
+      await onToggleStatus(member.id, newStatus);
     } finally {
       setToggling(false);
     }
@@ -122,19 +123,44 @@ export default function MemberCard({ member, roles, onUpdateRole, onToggleActive
 
       {/* Status chip */}
       <Chip
-        label={member.isActive ? 'Active' : 'Inactive'}
+        label={
+          member.status === 'active' ? 'Active'
+          : member.status === 'suspended' ? 'Suspended'
+          : member.status === 'invited' ? 'Invited'
+          : 'Inactive'
+        }
         size="small"
-        onClick={!toggling ? (e) => { e.stopPropagation(); handleToggle(); } : undefined}
+        onClick={
+          (member.status === 'active' || member.status === 'suspended') && !toggling
+            ? (e) => { e.stopPropagation(); handleToggle(); }
+            : undefined
+        }
         sx={{
-          cursor: 'pointer',
+          cursor: (member.status === 'active' || member.status === 'suspended') ? 'pointer' : 'default',
           fontWeight: 600,
           fontSize: '0.7rem',
           height: 24,
-          backgroundColor: member.isActive ? '#dcfce7' : '#fee2e2',
-          color: member.isActive ? '#15803d' : '#b91c1c',
-          border: `1px solid ${member.isActive ? '#bbf7d0' : '#fecaca'}`,
+          backgroundColor:
+            member.status === 'active' ? '#dcfce7'
+            : member.status === 'suspended' ? '#fff3cd'
+            : member.status === 'invited' ? '#dbeafe'
+            : '#fee2e2',
+          color:
+            member.status === 'active' ? '#15803d'
+            : member.status === 'suspended' ? '#b45309'
+            : member.status === 'invited' ? '#1d4ed8'
+            : '#b91c1c',
+          border: `1px solid ${
+            member.status === 'active' ? '#bbf7d0'
+            : member.status === 'suspended' ? '#fde68a'
+            : member.status === 'invited' ? '#bfdbfe'
+            : '#fecaca'
+          }`,
           '&:hover': {
-            backgroundColor: member.isActive ? '#bbf7d0' : '#fecaca',
+            backgroundColor:
+              member.status === 'active' ? '#bbf7d0'
+              : member.status === 'suspended' ? '#fde68a'
+              : undefined,
           },
         }}
       />

@@ -12,7 +12,7 @@ interface MemberDrawerProps {
   open: boolean;
   onClose: () => void;
   onUpdateRole: (memberId: string, roleId: string) => Promise<void>;
-  onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
+  onToggleStatus: (memberId: string, newStatus: 'active' | 'suspended') => Promise<void>;
   onRemove: (memberId: string) => Promise<void>;
 }
 
@@ -33,7 +33,7 @@ function formatDate(iso: string) {
 }
 
 export default function MemberDrawer({
-  member, roles, open, onClose, onUpdateRole, onToggleActive, onRemove,
+  member, roles, open, onClose, onUpdateRole, onToggleStatus, onRemove,
 }: MemberDrawerProps) {
   const [updatingRole, setUpdatingRole] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -58,7 +58,7 @@ export default function MemberDrawer({
 
   async function handleToggle() {
     setToggling(true);
-    try { await onToggleActive(m.id, !m.isActive); }
+    try { await onToggleStatus(m.id, m.status === 'active' ? 'suspended' : 'active'); }
     finally { setToggling(false); }
   }
 
@@ -134,15 +134,23 @@ export default function MemberDrawer({
           {/* Status */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className={`w-2 h-2 rounded-full ${m.isActive ? 'bg-emerald-500' : 'bg-red-400'}`} />
+              <div className={`w-2 h-2 rounded-full ${
+                m.status === 'active' ? 'bg-emerald-500'
+                : m.status === 'suspended' ? 'bg-amber-400'
+                : 'bg-red-400'
+              }`} />
               <div>
-                <p className="text-sm font-semibold text-slate-700">{m.isActive ? 'Active' : 'Inactive'}</p>
-                <p className="text-xs text-slate-400">{m.isActive ? 'Can access workspace' : 'Login blocked'}</p>
+                <p className="text-sm font-semibold text-slate-700">
+                  {m.status === 'active' ? 'Active' : m.status === 'suspended' ? 'Suspended' : 'Inactive'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {m.status === 'active' ? 'Can access workspace' : 'Access blocked for this workspace'}
+                </p>
               </div>
             </div>
             <Button
-              text={toggling ? '…' : m.isActive ? 'Suspend' : 'Reactivate'}
-              className={m.isActive ? 'outlinedBtn' : 'primaryBtn'}
+              text={toggling ? '…' : m.status === 'active' ? 'Suspend' : 'Reactivate'}
+              className={m.status === 'active' ? 'outlinedBtn' : 'primaryBtn'}
               size="small"
               onClick={handleToggle}
               loader={toggling}

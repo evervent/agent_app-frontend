@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/store/authStore';
-import { AuthResponse } from '@/features/auth/types/auth.types';
+import { SigninResponse } from '@/features/auth/types/auth.types';
 import { AxiosError } from 'axios';
 import { Smartphone, Lock, Target, RefreshCw, IndianRupee, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -36,6 +36,7 @@ function routeByStep(step: string, router: ReturnType<typeof useRouter>) {
 export default function SigninPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setPendingContexts = useAuthStore((s) => s.setPendingContexts);
   const [tab, setTab] = useState<'otp' | 'password'>('otp');
 
   // OTP form
@@ -97,10 +98,16 @@ export default function SigninPage() {
     setPwLoading(true);
     setPwError('');
     try {
-      const { data: res } = await api.post<AuthResponse>('/auth/signin/password', pwForm);
-      setAuth({ agent: res.agent, accessToken: res.accessToken, refreshToken: res.refreshToken });
-      toast.success('Welcome back, ' + res.agent.fullName.split(' ')[0] + '!');
-      routeByStep(res.onboardingStep, router);
+      const { data: res } = await api.post<SigninResponse>('/auth/signin/password', pwForm);
+      if ('requiresContextSelection' in res && res.requiresContextSelection) {
+        setPendingContexts(res.contexts, res.preAuthToken, res.agent);
+        router.push('/auth/context-select');
+        return;
+      }
+      const authData = res as import('@/features/auth/types/auth.types').AuthResponse;
+      setAuth({ agent: authData.agent, accessToken: authData.accessToken, refreshToken: authData.refreshToken, accountType: authData.accountType });
+      toast.success('Welcome back, ' + authData.agent.fullName.split(' ')[0] + '!');
+      routeByStep(authData.onboardingStep, router);
     } catch (err) {
       const e = err as AxiosError<{ message: string | string[] }>;
       const msg = e.response?.data?.message;

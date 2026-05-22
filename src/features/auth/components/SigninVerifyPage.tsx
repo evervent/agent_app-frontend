@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/store/authStore';
-import { AuthResponse } from '@/features/auth/types/auth.types';
+import { SigninResponse } from '@/features/auth/types/auth.types';
 import { AxiosError } from 'axios';
 import OtpInput from '@/features/auth/components/OtpInput';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import { Button } from 'ev-ui-lab';
 export default function SigninVerifyPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setPendingContexts = useAuthStore((s) => s.setPendingContexts);
 
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
@@ -40,11 +41,16 @@ export default function SigninVerifyPage() {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post<AuthResponse>('/auth/signin/otp', { mobile, otp });
-      setAuth({ agent: data.agent, accessToken: data.accessToken, refreshToken: data.refreshToken });
+      const { data } = await api.post<SigninResponse>('/auth/signin/otp', { mobile, otp });
       sessionStorage.removeItem('signin_mobile');
-      toast.success('Welcome back, ' + data.agent.fullName.split(' ')[0] + '!');
-      const step = data.onboardingStep;
+      if ('requiresContextSelection' in data && data.requiresContextSelection) {
+        setPendingContexts(data.contexts, data.preAuthToken, data.agent);
+        router.push('/auth/context-select');
+        return;
+      }      const authData = data as import('@/features/auth/types/auth.types').AuthResponse;
+      setAuth({ agent: authData.agent, accessToken: authData.accessToken, refreshToken: authData.refreshToken, accountType: authData.accountType });
+      toast.success('Welcome back, ' + authData.agent.fullName.split(' ')[0] + '!');
+      const step = authData.onboardingStep;
       if (step === 'complete') router.push('/dashboard');
       else if (step === 'profile') router.push('/onboarding/profile');
       else if (step === 'business') router.push('/onboarding/business');

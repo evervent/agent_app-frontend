@@ -41,7 +41,7 @@ export default function SignupVerifyPage() {
     setError('');
     try {
       const { data } = await api.post<AuthResponse>('/auth/verify-signup-otp', { mobile, otp });
-      setAuth({ agent: data.agent, accessToken: data.accessToken, refreshToken: data.refreshToken });
+      setAuth({ agent: data.agent, accessToken: data.accessToken, refreshToken: data.refreshToken, accountType: data.accountType });
       sessionStorage.removeItem('signup_mobile');
       toast.success('Account verified! Setting up your profile…');
       router.push('/onboarding/profile');
