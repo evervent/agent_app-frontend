@@ -14,6 +14,7 @@ import AgentProfilePage from '@/features/agent/components/AgentProfilePage';
 import { useAgentProfile } from '@/features/agent/hooks/useAgentProfile';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import RolesPage from '@/features/roles/components/RolesPage';
+import { LeadsPage } from '@/features/leads';
 
 const NAV_ITEMS = [
   { id: 'home',     label: 'Dashboard',          Icon: LayoutDashboard, permission: null },
@@ -232,6 +233,9 @@ export default function DashboardPage() {
 
           {/* Team section */}
           {activeNav === 'team' && <TeamPage />}
+
+          {/* Leads section */}
+          {activeNav === 'leads' && <LeadsPage />}
 
           {/* Roles & Permissions section */}
           {activeNav === 'roles' && <RolesPage onBack={() => setActiveNav('home')} />}
